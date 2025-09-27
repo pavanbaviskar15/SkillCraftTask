@@ -1,0 +1,78 @@
+# --- Traffic Accident Data Analysis (India: AccidentsBig.csv) ---
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import folium
+from folium.plugins import HeatMap
+
+# Show plots inline
+%matplotlib inline
+
+df = pd.read_csv("AccidentsBig.csv")
+
+# Preview data
+print("First 5 rows:")
+print(df.head())
+print("\nDataset Info:")
+print(df.info())
+
+time_cols = [c for c in df.columns if 'time' in c.lower()]
+weather_cols = [c for c in df.columns if 'weather' in c.lower()]
+road_cols = [c for c in df.columns if 'road' in c.lower()]
+lat_cols = [c for c in df.columns if 'lat' in c.lower()]
+lon_cols = [c for c in df.columns if 'lon' in c.lower()]
+
+time_col = time_cols[0] if time_cols else None
+weather_col = weather_cols[0] if weather_cols else None
+road_col = road_cols[0] if road_cols else None
+lat_col = lat_cols[0] if lat_cols else None
+lon_col = lon_cols[0] if lon_cols else None
+
+print("\nDetected columns:")
+print(f"Time: {time_col}, Weather: {weather_col}, Road: {road_col}, Lat: {lat_col}, Lon: {lon_col}")
+
+df = df.dropna(subset=[c for c in [time_col, weather_col, road_col, lat_col, lon_col] if c])
+
+if time_col:
+    df['Hour'] = pd.to_datetime(df[time_col], errors='coerce').dt.hour
+
+if weather_col:
+    plt.figure(figsize=(8,5))
+    sns.countplot(data=df, x=weather_col, order=df[weather_col].value_counts().index, palette="viridis")
+    plt.xticks(rotation=45)
+    plt.title("Accidents by Weather Conditions")
+    plt.show()
+
+if road_col:
+    plt.figure(figsize=(8,5))
+    sns.countplot(data=df, x=road_col, order=df[road_col].value_counts().index, palette="coolwarm")
+    plt.xticks(rotation=45)
+    plt.title("Accidents by Road Conditions")
+    plt.show()
+
+if 'Hour' in df.columns:
+    plt.figure(figsize=(8,5))
+    sns.histplot(df['Hour'].dropna(), bins=24, kde=False, color='red')
+    plt.title("Accidents by Hour of Day")
+    plt.xlabel("Hour (0-23)")
+    plt.ylabel("Number of Accidents")
+    plt.show()
+
+if lat_col and lon_col:
+    map_center = [df[lat_col].mean(), df[lon_col].mean()]
+    m = folium.Map(location=map_center, zoom_start=6)  # zoom_start set for India scale
+
+    heat_data = df[[lat_col, lon_col]].dropna().values.tolist()
+    HeatMap(heat_data, radius=6).add_to(m)
+
+    # Save map to HTML file
+    m.save("accident_hotspots.html")
+    print("✅ Hotspot map saved as accident_hotspots.html (open in browser)")
+
+if 'Hour' in df.columns:
+    plt.figure(figsize=(8,5))
+    sns.heatmap(df[['Hour']].corr(), annot=True, cmap="Blues")
+    plt.title("Correlation Matrix (Example)")
+    plt.show()
